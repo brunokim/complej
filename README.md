@@ -1,13 +1,15 @@
 # complej
 
-A Clojure library designed to ... well, that part is up to you.
+A clojure library designed to study Complex Networks.
 
 ## Usage
 
-FIXME
+	(use 'complej.core)
+	(def g (barabasi 1024 4))
+	(histogram (degrees g))
 
 ## License
 
-Copyright © 2013 FIXME
+Copyright © 2013 Bruno Kim Medeiros Cesar
 
 Distributed under the Eclipse Public License, the same as Clojure.
