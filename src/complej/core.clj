@@ -1,97 +1,75 @@
 (ns complej.core
   (:use [clojure.set]
-        [incanter core stats charts]))
+        [incanter core stats]))
 
-(def empty-graph {:v #{} :e #{}})
+(def empty-graph {:edges #{} :directed? true :looped? false})
 
-(defn- add-e [g v1 v2] 
-  (if (and (= v1 v2) (not (:looped? g)))
-    (:e g)
-    (if (:directed? g)
-      (conj (:e g) [v1 v2])
-      (conj (:e g) [v1 v2] [v2 v1]))))
+(defmulti add-edge 
+  "Add the specified edge to the graph. The following syntaxes are supported:
+   Directed graph:
+     (g v1 v2), (g [v1 v2]): inserts edge from v1 to v2
+     (g v1 v1), (g [v1 v1]): inserts loop in vertex v1, if graph is looped
+   Undirected graph:
+     (g v1), (g [v1]): inserts loop in vertex v1 (looped graph only). The vertex can't be a collection
+     (g v1 v2), (g [v1 v2]): inserts edge between v1 and v2
+     (g v1 v2 v3..), (g [v1 v2 v3...]): insert multi-edge between specified vertices"
+ (fn [g & args] (:directed? g)))
 
-(defn add-edge
-  ([g [v1 v2]] (add-edge g v1 v2))
-  ([g v1 v2]   (assoc g :v (conj (:v g) v1 v2) :e (add-e g v1 v2))))
+(defmulti degree 
+  "Maps vertex to its degree.
+   Directed graph: 
+     {:in {v1 <in-deg-v1>, v2 <in-deg-v2>, ...}
+      :out {v1 <out-deg-v1>, v2 <out-deg-v2>, ...}}
+   Undirected graph:
+     {v1 <deg-v1>, v2 <deg-v2>}"
+  (fn [g] (:directed? g)))
 
-;; Some useful predicates, testing whether the vertex is in some position 
-;; within the edge.
-(defn has-vertex? [v e] (some #{v} e))
-(defn out-vertex? [v e] (= v (first e)))
-(defn in-vertex?  [v e] (= v (second e)))
+;; Directed graph methods
 
-(defn select-edges
-  "Select edges that satisfy the position predicate of the specified 
-  vertex v in g"
-  [pred v g]
-  (select (partial pred v) (:e g)))
+(defmethod add-edge true 
+  ([g v1 v2] (add-edge g [v1 v2]))
+  ([g [v1 v2]]
+    (cond 
+      (or (:looped? g) (not= v1 v2)) 
+        {:edges (conj (:edges g) [v1 v2])
+         :directed? true
+         :looped? (:looped? g)}
+      :else g)))
 
-(defn degree 
-  "Returns the degree of every vertex in the graph, considering their
-  edge position."
-  ([g] (degree has-vertex? g))
-  ([pred g]
-    (for [v (:v g)] [v (count (select-edges pred v g))])))
+(defmethod degree true 
+  ([g]
+  (let [m [apply map vector (:edges g)]
+        vertices (reduce #(apply conj %1 %2) #{} (:edges g))]
+    (println (:edges g) m vertices)
+    {:in (frequencies (second m))
+     :out (frequencies (first m))})))
 
-(defn out-degree [g] (degree out-vertex? g))
-(defn in-degree  [g] (degree in-vertex?  g))
+;; Undirected graph methods
 
-(defn neighbours
+(defmethod add-edge false
+  ([g v1 v2 & vs] (add-edge g (conj (set vs) v1 v2)))
+  ([g arg1]
+    (if (coll? arg1)
+     (let [edge (set arg1)] 
+       (if (or (> (count edge) 1) (:looped? g))
+         {:edges (conj (:edges g) edge) :directed? false :looped? (:looped? g)}
+         g))
+     (add-edge g #{arg1}))))
+
+(defmethod degree false [g]
+  (frequencies (reduce concat [] (:edges g))))
+
+#_(defn neighbours
   "Returns a sequence of neighbouring vertices of v in g"
   ([g v] (neighbours has-vertex? g v))
   ([pred g v]
     (map (fn [[v1 v2]] (if (= v v1) v2 v1))
          (select (partial pred v) (:e g)))))
 
-(def adjacents (partial neighbours out-vertex?))
-(def incidents (partial neighbours in-vertex?))
+#_(def adjacents (partial neighbours out-vertex?))
+#_(def incidents (partial neighbours in-vertex?))
 
-(defn- pairs-erdos-renyi [n k]
-  (for [i (range n), j (range n)
-        :when (< (rand-int n) k)]
-   [i j]))
-
-(defn erdos-renyi 
-  "Returns an Erdos-Renyi graph with n vertices with k average (out-)degree.
-  looped?   If true, allows self-references, ie, edges like [v1 v1]. Default is false.
-  directed? If true, creates in average k outgoing edges per vertex. Else, add all
-            reversed edges to the graph, making it undirected. Note that in this case
-            the total average degree is 2*k. Default is false."
-  ([n k] (erdos-renyi n k false false))
-  ([n k looped? directed?] 
-    (reduce add-edge 
-            (assoc empty-graph :looped? looped? :directed? directed?)
-            (pairs-erdos-renyi n k))))
-
-(defn clique
-  "Returns a complete graph (clique) with n vertices."
-  ([n] (clique n false false))
-  ([n looped? directed?]
-    (reduce add-edge
-            (assoc empty-graph :looped? looped? :directed? directed?)
-            (for [i (range n), j (range n)] [i j]))))
-
-(defn preferential-edges [v k edges]
-  (loop [i 0, new-edges #{}, available-edges (seq edges)]
-    (if (= i k)
-      new-edges
-      (let [selected-vertex (rand-nth (rand-nth available-edges))
-            edge-has-selected? (partial has-vertex? selected-vertex)]
-        (recur (inc i)
-               (conj new-edges [v selected-vertex])
-               (filter (complement edge-has-selected?) available-edges))))))
-
-(defn barabasi
-  ([n k] (barabasi n k false false))
-  ([n k looped? directed?]
-    (loop [i (inc k), g (clique (inc k) looped? directed?)]
-      (if (= i n)
-        g
-        (recur (inc i)
-               (reduce add-edge g (preferential-edges i k (:e g))))))))
-
-(defn hist [pairs loglog?]
+#_(defn hist [pairs loglog?]
   (let [data (map (fn [[v d]] d) pairs)
         h    (histogram data :nbins (count data))]
     (if loglog?
@@ -106,21 +84,3 @@
           h))
       h)))
 
-(defn epidemics [g initial-state transition terminate?]
-  (loop [coll '(), state initial-state]
-    (if (terminate? g state)
-      coll
-      (let [next-state (transition g state)]
-        (recur (cons next-state coll) next-state)))))
-
-(def daley-kendall-table
-  {:ignorant [:spreader :spreader]
-   :spreader [:stifler  :stifler]
-   :stifler  [:stifler  :stifler]})
-
-(defn daley-kendall-transition [g state]
-  (let [is-spreader? #(= :spreader (val (first %)))
-        spreaders    (map #(key (first %)) (filter is-spreader? state))
-        edges        (for [v spreaders] [v (rand-nth (adjacents g v))])]))
-    
-    
