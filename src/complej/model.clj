@@ -13,3 +13,16 @@
                 :when (< (rand-int n) k)] 
             [i j])))
 
+#_(defn lattice [n k d & args]
+  "Regular d-dimensional lattice with n vertices per dimension and k neighbors")
+
+#_(defn barabasi-albert [n k & args]
+  "Barabási-Albert graph with n vertices and k edges per new vertex")
+
+#_(defn watts-strogatz [n k beta]
+  "Watts-Strogatz undirected graph with n vertices and k neighbors each, 
+  with beta probability to redirect an edge")
+
+#_(defn watts-strogatz-2 [n k beta]
+  "Watts-Strogatz undirected graph with n vertices and k neighbors each, added to 
+  random edges created with probability beta")
