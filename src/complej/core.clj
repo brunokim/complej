@@ -2,7 +2,15 @@
   (:use [clojure.set]
         [incanter core stats]))
 
-(def empty-graph {:edges #{} :directed? true :looped? false})
+(defn new-graph [& args]
+  (let [supported #{:directed :undirected :looped :unlooped :pseudo}]
+    (when-let [unsupported (seq (remove supported args))]
+      (throw (Exception. (str "Unsupported arguments: " (interpose \, unsupported)))))
+    {:edges     (if (some #{:pseudo} args) [] #{})
+     :directed? (not (some #{:undirected} args))
+     :looped?   (some #{:looped} args)}))
+
+(def empty-graph (new-graph))
 
 (defmulti add-edge 
   "Add the specified edge to the graph. The following syntaxes are supported:
@@ -30,11 +38,9 @@
   ([g v1 v2] (add-edge g [v1 v2]))
   ([g [v1 v2]]
     (cond 
-      (or (:looped? g) (not= v1 v2)) 
-        {:edges (conj (:edges g) [v1 v2])
-         :directed? true
-         :looped? (:looped? g)}
-      :else g)))
+      (or (:looped? g) (not= v1 v2))
+        (assoc g :edges (conj (:edges g) [v1 v2])) 
+     :else g)))
 
 (defmethod degree true 
   ([g]
@@ -52,7 +58,7 @@
     (if (coll? arg1)
      (let [edge (set arg1)] 
        (if (or (> (count edge) 1) (:looped? g))
-         {:edges (conj (:edges g) edge) :directed? false :looped? (:looped? g)}
+         (assoc g :edges (conj (:edges g) edge))
          g))
      (add-edge g #{arg1}))))
 
