@@ -42,13 +42,11 @@
         (assoc g :edges (conj (:edges g) [v1 v2])) 
      :else g)))
 
-(defmethod degree true 
-  ([g]
-  (let [m [apply map vector (:edges g)]
+(defmethod degree true [g]
+  (let [[out in] (apply map vector (:edges g))
         vertices (reduce #(apply conj %1 %2) #{} (:edges g))]
-    (println (:edges g) m vertices)
-    {:in (frequencies (second m))
-     :out (frequencies (first m))})))
+    {:in (frequencies in)
+     :out (frequencies out)}))
 
 ;; Undirected graph methods
 
