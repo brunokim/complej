@@ -5,7 +5,7 @@
 (defn new-graph [& args]
   (let [supported #{:directed :undirected :looped :unlooped :pseudo}]
     (when-let [unsupported (seq (remove supported args))]
-      (throw (Exception. (str "Unsupported arguments: " (interpose \, unsupported)))))
+      (throw (Exception. (apply str "Unsupported arguments: " (interpose \, unsupported)))))
     {:edges     (if (some #{:pseudo} args) [] #{})
      :directed? (not (some #{:undirected} args))
      :looped?   (some #{:looped} args)}))
