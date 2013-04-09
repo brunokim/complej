@@ -16,6 +16,15 @@
 #_(defn lattice [n k d & args]
   "Regular d-dimensional lattice with n vertices per dimension and k neighbors")
 
+(defn- clique-edges [n]
+  (for [i (range n), j (range n) :when (< i j)] [i j]))
+
+(defn- preferred-vertex [edges]
+  (rand-nth (rand-nth edges)))
+
+(defn- remove-adjacent-edges [vertex edges]
+  (filter #(not (some #{vertex} %)) edges))
+
 #_(defn barabasi-albert [n k & args]
   "Barabási-Albert graph with n vertices and k edges per new vertex")
 
