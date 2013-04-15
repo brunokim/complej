@@ -12,6 +12,18 @@
 
 (def empty-graph (new-graph))
 
+;; Methods
+
+(defn adjacent-edges [g v]
+  "Returns all edges adjacent to a given vertex"
+  (filter #(some #{v} %) (:edges g)))
+
+(defn adjacent-vertices [g v]
+  "Returns all vertices that share an edge with the given vertex"
+  (remove #{v} (set (apply concat [] (adjacent-edges g v)))))
+
+;; Polymorphic methods
+
 (defmulti add-edge 
   "Add the specified edge to the graph. The following syntaxes are supported:
    Directed graph:
