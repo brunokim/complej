@@ -14,11 +14,11 @@
 
 ;; Methods
 
-(defn adjacent-edges [g v]
+(defn neighbor-edges [g v]
   "Returns all edges adjacent to a given vertex"
   (filter #(some #{v} %) (:edges g)))
 
-(defn adjacent-vertices [g v]
+(defn neighbor-vertices [g v]
   "Returns all vertices that share an edge with the given vertex"
   (remove #{v} (set (apply concat [] (adjacent-edges g v)))))
 
@@ -44,6 +44,14 @@
      {v1 <deg-v1>, v2 <deg-v2>}"
   (fn [g] (:directed? g)))
 
+(defmulti adjacents
+  "Returns vertices that can be reached from the given vertex"
+  (fn [g v] (:directed? g)))
+
+(defmulti incidents
+  "Returns vertices that can reach the given vertex"
+  (fn [g v] (:directed? g)))
+
 ;; Directed graph methods
 
 (defmethod add-edge true 
@@ -58,7 +66,13 @@
   (let [[out in] (apply map vector (:edges g))
         vertices (reduce #(apply conj %1 %2) #{} (:edges g))]
     {:in (frequencies in)
-     :out (frequencies out)}))
+     :out (frequencies out)})) 
+
+(defmethod adjacents true [g v]
+  (map second (filter (fn [[v1 v2]] (= v1 v)) (:edges g))))
+
+(defmethod incidents true [g v]
+  (map first (filter (fn [[v1 v2]] (= v2 v)) (:edges g))))
 
 ;; Undirected graph methods
 
@@ -74,6 +88,12 @@
 
 (defmethod degree false [g]
   (frequencies (reduce concat [] (:edges g))))
+
+(defmethod adjacents false [g v]
+  (neighbor-vertices g v))
+
+(defmethod incidents false [g v]
+  (neighbor-vertices g v))
 
 #_(defn neighbours
   "Returns a sequence of neighbouring vertices of v in g"
