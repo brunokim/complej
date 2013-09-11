@@ -7,6 +7,7 @@ A clojure library designed to study Complex Networks.
 	(use 'complej.core)
 	(def g (barabasi 1024 4))
 	(histogram (degrees g))
+	(plot g)
 
 ## License
 
